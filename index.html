@@ -6,7 +6,7 @@
   <title>REAPER Remote Control</title>
   <style>
     body {
-      font-family: sans-serif;
+      font-family: system-ui, sans-serif;
       text-align: center;
       margin-top: 80px;
       background: #111;
@@ -16,59 +16,94 @@
       margin-bottom: 40px;
     }
     button {
-      font-size: 2em;
-      padding: 20px 60px;
-      margin: 20px;
+      font-size: 1.5em;
+      padding: 18px 50px;
+      margin: 15px;
       border: none;
       border-radius: 10px;
       cursor: pointer;
-      transition: transform 0.1s ease;
+      transition: transform 0.1s ease, background-color 0.3s;
     }
     button:active {
       transform: scale(0.95);
     }
-    .record {
-      background-color: red;
-      color: white;
-    }
-    .stop {
-      background-color: gray;
-      color: white;
-    }
+    .record { background-color: #c00; color: white; }
+    .stop { background-color: gray; color: white; }
+    .refresh { background-color: #06c; color: white; font-size: 1em; padding: 10px 30px; }
     #status {
       margin-top: 30px;
-      font-size: 1.2em;
-      color: #0f0;
+      font-size: 1.3em;
+    }
+    #status span {
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <h2>🎛️ REAPER Remote Control</h2>
+  <h2>🎚️ REAPER Remote Control</h2>
 
-  <button class="record" onclick="setCommand('RECORD')">RECORD</button>
-  <button class="stop" onclick="setCommand('STOP')">STOP</button>
+  <div>
+    <button class="record" onclick="setCommand('RECORD')">RECORD</button>
+    <button class="stop" onclick="setCommand('STOP')">STOP</button>
+  </div>
 
-  <p id="status">Ready</p>
+  <div>
+    <button class="refresh" onclick="fetchCurrentCommand()">🔄 Refresh</button>
+  </div>
+
+  <p id="status">Current command: <span id="currentCmd">Loading...</span></p>
 
   <script>
-    const API_BASE = "https://reaper-remote-api-luidnas-projects.vercel.app/api"; // 🔧 change this
+    const API_BASE = "https://reaper-remote-api-luidnas-projects.vercel.app/api"; // 🔧 replace this
+    const GITHUB_RAW_URL = "https://raw.githubusercontent.com/luidna/r-test/main/command.txt"; // 🔧 replace this
 
     async function setCommand(cmd) {
-      document.getElementById("status").textContent = "Sending...";
+      document.getElementById("currentCmd").textContent = "Sending...";
       try {
         const resp = await fetch(`${API_BASE}/setCommand?cmd=${cmd}`);
         const json = await resp.json();
-
         if (json.success) {
-          document.getElementById("status").textContent = `✅ Command set to ${cmd}`;
+          updateDisplay(cmd);
         } else {
-          document.getElementById("status").textContent = `⚠️ Error: ${json.error || "Unknown"}`;
+          document.getElementById("currentCmd").textContent = `Error: ${json.error || "unknown"}`;
         }
       } catch (err) {
-        document.getElementById("status").textContent = "❌ Network error";
         console.error(err);
+        document.getElementById("currentCmd").textContent = "❌ Network error";
       }
     }
+
+    async function fetchCurrentCommand() {
+      document.getElementById("currentCmd").textContent = "Loading...";
+      try {
+        const resp = await fetch(GITHUB_RAW_URL + `?t=${Date.now()}`); // cache-busting
+        const text = (await resp.text()).trim().toUpperCase();
+        if (text) updateDisplay(text);
+        else document.getElementById("currentCmd").textContent = "Unknown";
+      } catch (err) {
+        console.error(err);
+        document.getElementById("currentCmd").textContent = "Error fetching";
+      }
+    }
+
+    function updateDisplay(cmd) {
+      const current = document.getElementById("currentCmd");
+      const body = document.body;
+      current.textContent = cmd;
+
+      if (cmd === "RECORD") {
+        current.style.color = "red";
+      } else if (cmd === "STOP") {
+        current.style.color = "gray";
+      } else if (cmd === "PLAY") {
+        current.style.color = "#0f0";
+      } else {
+        current.style.color = "white";
+      }
+    }
+
+    // Auto-load on startup
+    fetchCurrentCommand();
   </script>
 </body>
 </html>
