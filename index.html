@@ -55,7 +55,6 @@
 
   <script>
     const API_BASE = "https://reaper-remote-api-luidnas-projects.vercel.app/api"; // 🔧 replace this
-    const GITHUB_RAW_URL = "https://raw.githubusercontent.com/luidna/r-test/main/command.txt"; // 🔧 replace this
 
     async function setCommand(cmd) {
       document.getElementById("currentCmd").textContent = "Sending...";
@@ -73,18 +72,28 @@
       }
     }
 
-    async function fetchCurrentCommand() {
-      document.getElementById("currentCmd").textContent = "Loading...";
-      try {
-        const resp = await fetch(GITHUB_RAW_URL + `?t=${Date.now()}`); // cache-busting
-        const text = (await resp.text()).trim().toUpperCase();
-        if (text) updateDisplay(text);
-        else document.getElementById("currentCmd").textContent = "Unknown";
-      } catch (err) {
-        console.error(err);
-        document.getElementById("currentCmd").textContent = "Error fetching";
+  async function fetchCurrentCommand() {
+    document.getElementById("currentCmd").textContent = "Loading...";
+    try {
+      // Use your GET endpoint — must return { command: "RECORD" } or just "RECORD" text
+      const resp = await fetch(`${API_BASE}/getCommand?t=${Date.now()}`);
+      const contentType = resp.headers.get("content-type");
+      let cmd = "";
+
+      if (contentType && contentType.includes("application/json")) {
+        const json = await resp.json();
+        cmd = (json.command || "").toUpperCase();
+      } else {
+        cmd = (await resp.text()).trim().toUpperCase();
       }
+
+      if (cmd) updateDisplay(cmd);
+      else document.getElementById("currentCmd").textContent = "Unknown";
+    } catch (err) {
+      console.error(err);
+      document.getElementById("currentCmd").textContent = "Error fetching";
     }
+  }
 
     function updateDisplay(cmd) {
       const current = document.getElementById("currentCmd");
